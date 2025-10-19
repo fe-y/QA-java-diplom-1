@@ -6,6 +6,8 @@ import org.junit.runner.RunWith;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
+import java.util.Locale;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -45,13 +47,14 @@ public class BurgerTest {
         when(fillingIngredient.getType()).thenReturn(IngredientType.FILLING);
     }
 
-    // ====== Простые тесты ======
+    // ====== Тесты булки ======
     @Test
     public void testSetBun() {
         burger.setBuns(bunMock);
         assertEquals(bunMock, burger.bun);
     }
 
+    // ====== Тесты добавления ингредиентов ======
     @Test
     public void testAddSauceIngredient() {
         burger.setBuns(bunMock);
@@ -66,29 +69,49 @@ public class BurgerTest {
         assertEquals(fillingIngredient, burger.ingredients.get(0));
     }
 
+    // ====== Тесты удаления ингредиентов ======
     @Test
-    public void testRemoveIngredientKeepsOnlyRemaining() {
+    public void testRemoveIngredientKeepsCorrectIngredient() {
         burger.setBuns(bunMock);
         burger.addIngredient(sauceIngredient);
         burger.addIngredient(fillingIngredient);
 
         burger.removeIngredient(0);
         assertEquals(fillingIngredient, burger.ingredients.get(0));
-        assertEquals(1, burger.ingredients.size());
     }
 
     @Test
-    public void testMoveIngredientChangesOrder() {
+    public void testRemoveIngredientListSize() {
+        burger.setBuns(bunMock);
+        burger.addIngredient(sauceIngredient);
+        burger.addIngredient(fillingIngredient);
+
+        burger.removeIngredient(0);
+        assertEquals(1, burger.ingredients.size());
+    }
+
+    // ====== Тесты перемещения ингредиентов ======
+    @Test
+    public void testMoveIngredientFirstPosition() {
         burger.setBuns(bunMock);
         burger.addIngredient(sauceIngredient);
         burger.addIngredient(fillingIngredient);
 
         burger.moveIngredient(0, 1);
         assertEquals(fillingIngredient, burger.ingredients.get(0));
+    }
+
+    @Test
+    public void testMoveIngredientSecondPosition() {
+        burger.setBuns(bunMock);
+        burger.addIngredient(sauceIngredient);
+        burger.addIngredient(fillingIngredient);
+
+        burger.moveIngredient(0, 1);
         assertEquals(sauceIngredient, burger.ingredients.get(1));
     }
 
-    // ====== Параметризированный тест для расчета цены ======
+    // ====== Параметризированные тесты цены ======
     private Object[] parametersForBurgerPriceTest() {
         Ingredient sauce = mock(Ingredient.class);
         when(sauce.getPrice()).thenReturn(SAUCE_PRICE);
@@ -120,7 +143,7 @@ public class BurgerTest {
         assertEquals(expectedPrice, burger.getPrice(), 0.01);
     }
 
-    // ====== Параметризированный тест для добавления ингредиентов ======
+    // ====== Параметризированные тесты добавления ингредиентов ======
     private Object[] parametersForAddIngredientTest() {
         return new Object[]{
                 new Object[]{sauceIngredient},
@@ -136,27 +159,55 @@ public class BurgerTest {
         assertTrue(burger.ingredients.contains(ingredient));
     }
 
-    // ====== Тесты чека (каждая проверка отдельно) ======
+    // ====== Тесты рецепта ======
     @Test
-    public void testReceiptContainsBunName() {
-        burger.setBuns(bunMock);
-        String receipt = burger.getReceipt();
-        assertTrue(receipt.contains(bunMock.getName()));
-    }
-
-    @Test
-    public void testReceiptContainsSauceName() {
+    public void testGetReceiptFull() {
         burger.setBuns(bunMock);
         burger.addIngredient(sauceIngredient);
-        String receipt = burger.getReceipt();
-        assertTrue(receipt.contains(sauceIngredient.getName()));
+        burger.addIngredient(fillingIngredient);
+
+        String expectedReceipt = String.format(Locale.US,
+                "(==== %s ====)%n" +
+                        "= %s %s =%n" +
+                        "= %s %s =%n" +
+                        "(==== %s ====)%n" +
+                        "%nPrice: %.2f%n",
+                bunMock.getName(),
+                sauceIngredient.getType().toString().toLowerCase(), sauceIngredient.getName(),
+                fillingIngredient.getType().toString().toLowerCase(), fillingIngredient.getName(),
+                bunMock.getName(),
+                burger.getPrice()
+        );
+
+        assertEquals(expectedReceipt, burger.getReceipt());
     }
 
     @Test
-    public void testReceiptContainsFillingName() {
+    public void testGetReceiptEmptyIngredients() {
         burger.setBuns(bunMock);
+        String expectedReceipt = String.format(Locale.US,
+                "(==== %s ====)%n" +
+                        "(==== %s ====)%n%n" +
+                        "Price: %.2f%n",
+                bunMock.getName(),
+                bunMock.getName(),
+                burger.getPrice());
+        assertEquals(expectedReceipt, burger.getReceipt());
+    }
+
+    @Test
+    public void testGetReceiptWithoutBun() {
+        burger.addIngredient(sauceIngredient);
         burger.addIngredient(fillingIngredient);
-        String receipt = burger.getReceipt();
-        assertTrue(receipt.contains(fillingIngredient.getName()));
+
+        try {
+            burger.getReceipt();
+            fail("Expected NullPointerException when bun is null");
+        } catch (NullPointerException ignored) {}
+    }
+
+    @Test
+    public void testGetPriceWithoutBun() {
+        assertEquals(0f, burger.getPrice(), 0.01);
     }
 }
